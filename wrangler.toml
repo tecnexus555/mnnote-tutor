@@ -2,3 +2,7 @@ name = "mnnote-tutor"
 main = "tutor-worker.js"
 compatibility_date = "2025-01-01"
 
+[vars]
+FIREBASE_PROJECT_ID = "mnnote-57100"
+ALLOWED_ORIGINS = "https://tecnexus555.github.io"
+DAILY_LIMIT = "40"
