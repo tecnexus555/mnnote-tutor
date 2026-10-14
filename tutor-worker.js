@@ -87,24 +87,25 @@ function allowedUser(env, p) {
 }
 
 async function callGemini(env, prompt, wantJson) {
-  const models = [env.GEMINI_MODEL || "gemini-2.5-flash", "gemini-2.5-flash", "gemini-flash-latest"].filter((m, i, a) => m && a.indexOf(m) === i);
+  const models = [env.GEMINI_MODEL || "gemini-2.5-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"].filter((m, i, a) => m && a.indexOf(m) === i);
   const body = JSON.stringify({
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: Object.assign({ temperature: 0.4 }, wantJson ? { responseMimeType: "application/json" } : {})
   });
+  let last = null;
   for (const m of models) {
     const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(m) + ":generateContent", {
       method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY }, body
     });
-    if (r.status === 404) continue;
     const j = await r.json().catch(() => ({}));
+    if (r.status === 404 || r.status === 503 || r.status === 500) { last = { status: 502, error: (j.error && j.error.message) || "gemini_busy" }; continue; }
     if (!r.ok) return { status: r.status === 429 ? 429 : 502, error: (j.error && j.error.message) || "gemini" };
     const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
     const text = parts.map(x => x.text || "").join("");
     if (!text) return { status: 502, error: "empty" };
     return { status: 200, text };
   }
-  return { status: 502, error: "model" };
+  return last || { status: 502, error: "model" };
 }
 
 export default {
